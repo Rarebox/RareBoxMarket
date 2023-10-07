@@ -28,7 +28,7 @@ export default function (
   }
 
   const { data: topSellingData, ...topSellingSwr } = useSWR<
-    paths['/collections/top-selling/v1']['get']['responses']['200']['schema']
+    paths['/collections/top-selling/v2']['get']['responses']['200']['schema']
   >(
     path.href ? [path.href, client?.apiKey, client?.version] : null,
     null,
