@@ -302,7 +302,7 @@ export const getStaticProps: GetStaticProps<{
 
   const chain = supportedChains.find((chain) => params?.chain === chain.routePrefix) ||
     DefaultChain
-  const response = await fetcher(`${chain.reservoirBaseUrl}/collections/top-selling/v2?period=24h&includeRecentSales=true&limit=9&fillType=sale`, topSellingCollectionsQuery, {
+  const response = await fetcher(`${chain.reservoirBaseUrl}/collections/top-selling/v1`, topSellingCollectionsQuery, {
     headers: {
       'x-api-key': chain.apiKey || '',
     },

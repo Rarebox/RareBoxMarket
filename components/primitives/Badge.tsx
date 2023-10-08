@@ -9,11 +9,11 @@ export default styled('span', {
   variants: {
     color: {
       primary: {
-        backgroundColor: '$primary11',
+        backgroundColor: '$green9',
         color: '#000'
       },
       secondary: {
-        backgroundColor: '$secondary8',
+        backgroundColor: '#dcb73f',
         color: '#000'
       },
     },
