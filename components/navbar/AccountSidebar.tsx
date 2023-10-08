@@ -51,7 +51,7 @@ export const AccountSidebar: FC = () => {
       {ensAvatar ? (
         <Avatar size="medium" src={ensAvatar} />
       ) : (
-        <Jazzicon diameter={40} seed={jsNumberForAddress(address as string)} />
+        <Jazzicon diameter={44} seed={jsNumberForAddress(address as string)} />
       )}
     </Button>
   )
@@ -103,7 +103,7 @@ export const AccountSidebar: FC = () => {
                   right: '-100%',
                 }}
               >
-                <Flex direction="column" css={{ py: 42, px: '$4' }}>
+                <Flex direction="column" css={{ py: '$4', px: '$4' }}>
                   <Button
                     color="ghost"
                     css={{ color: '$gray10', ml: 'auto', mr: 10 }}
@@ -111,14 +111,14 @@ export const AccountSidebar: FC = () => {
                       setOpen(false)
                     }}
                   >
-                    <FontAwesomeIcon icon={faClose} height={16} width={16} />
+                    <FontAwesomeIcon icon={faClose} height={18} width={18} />
                   </Button>
                   <Flex align="center" css={{ gap: '$3', ml: '$3' }}>
                     {ensAvatar ? (
-                      <Avatar size="medium" src={ensAvatar} />
+                      <Avatar size="large" src={ensAvatar} />
                     ) : (
                       <Jazzicon
-                        diameter={44}
+                        diameter={52}
                         seed={jsNumberForAddress(address as string)}
                       />
                     )}
@@ -130,7 +130,7 @@ export const AccountSidebar: FC = () => {
                         <Flex
                           align="center"
                           css={{
-                            gap: 10,
+                            gap: 8,
                             color: '$gray11',
                             cursor: 'pointer',
                           }}
@@ -141,8 +141,8 @@ export const AccountSidebar: FC = () => {
                           {!shortEnsName ? (
                             <FontAwesomeIcon
                               icon={faCopy}
-                              width={16}
-                              height={16}
+                              width={12}
+                              height={14}
                             />
                           ) : null}
                         </Flex>
@@ -150,7 +150,7 @@ export const AccountSidebar: FC = () => {
                           <Flex
                             align="center"
                             css={{
-                              gap: 10,
+                              gap: 8,
                               color: '$gray11',
                               cursor: 'pointer',
                             }}
@@ -160,8 +160,8 @@ export const AccountSidebar: FC = () => {
                             </Text>
                             <FontAwesomeIcon
                               icon={faCopy}
-                              width={16}
-                              height={16}
+                              width={12}
+                              height={12}
                             />
                           </Flex>
                         ) : null}
@@ -179,7 +179,7 @@ export const AccountSidebar: FC = () => {
                           cursor: 'pointer',
                         }}
                       >
-                        <FontAwesomeIcon icon={faStore} width={16} height={16} />
+                        <FontAwesomeIcon icon={faStore} />
                         <Text style="body1">My Items</Text>
                       </Flex>
                     </Link>
@@ -193,7 +193,7 @@ export const AccountSidebar: FC = () => {
                           cursor: 'pointer',
                         }}
                       >
-                        <FontAwesomeIcon icon={faList} width={16} height={16} />
+                        <FontAwesomeIcon icon={faList} />
                         <Text style="body1">Listings</Text>
                       </Flex>
                     </Link>
@@ -207,7 +207,7 @@ export const AccountSidebar: FC = () => {
                           cursor: 'pointer',
                         }}
                       >
-                        <FontAwesomeIcon icon={faHand} width={16} height={16} />
+                        <FontAwesomeIcon icon={faHand} />
                         <Text style="body1">Offers Made</Text>
                       </Flex>
                     </Link>
@@ -221,7 +221,7 @@ export const AccountSidebar: FC = () => {
                           cursor: 'pointer',
                         }}
                       >
-                        <FontAwesomeIcon icon={faChartLine} width={16} height={16} />
+                        <FontAwesomeIcon icon={faChartLine} />
                         <Text style="body1">Activity</Text>
                       </Flex>
                     </Link>
