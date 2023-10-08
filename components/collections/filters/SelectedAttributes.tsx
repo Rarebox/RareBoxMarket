@@ -4,20 +4,13 @@ import { FC, useEffect, useState } from 'react'
 import { Button, Flex, Text } from 'components/primitives'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faClose } from '@fortawesome/free-solid-svg-icons'
-import { CollectionOffer } from 'components/buttons'
-import { useCollections } from '@reservoir0x/reservoir-kit-ui'
 
 type Attribute = {
   key: string
   value: string
 }[]
 
-type Props = {
-  collection: ReturnType<typeof useCollections>['data'][0]
-  mutate: ReturnType<typeof useCollections>['mutate']
-}
-
-const SelectedAttributes: FC<Props> = ({ collection, mutate }) => {
+const SelectedAttributes: FC = () => {
   const router = useRouter()
 
   const [filters, setFilters] = useState<Attribute>([])
@@ -53,20 +46,18 @@ const SelectedAttributes: FC<Props> = ({ collection, mutate }) => {
   if (filters.length === 0) return null
 
   return (
-    <Flex wrap="wrap" align="center" css={{ mb: '$4' }}>
+    <Flex wrap="wrap" align="center">
       {filters.map(({ key, value }) => (
         <Button
           key={key + value}
           onClick={() => {
             removeParam(router, `attributes[${key}]`, value)
           }}
-          color="gray3"
-          css={{ mr: '$3' }}
+          color="gray4"
+          css={{ mr: '$4', mb: '24px' }}
           size="small"
         >
-          <Text style="body1" css={{ color: '$gray12' }}>
-            {key}:
-          </Text>
+          <Text css={{ color: '$primary11' }}>{key}:</Text>
           <Text style="subtitle1">{value}</Text>
           <Text css={{ color: '$gray9' }}>
             <FontAwesomeIcon icon={faClose} width="16" height="16" />
@@ -80,33 +71,10 @@ const SelectedAttributes: FC<Props> = ({ collection, mutate }) => {
             clearAllAttributes(router)
           }}
           color="ghost"
-          css={{
-            color: '$primary11',
-            fontWeight: 500,
-
-            px: '$4',
-          }}
+          css={{ color: '$primary11', fontWeight: 500, mb: '24px' }}
         >
           Clear all
         </Button>
-      )}
-
-      {filters.length === 1 && (
-        <CollectionOffer
-          collection={collection}
-          buttonChildren={
-            <>
-              Bid on {filters.length} {filters.length > 1 ? 'Traits' : 'Trait'}
-            </>
-          }
-          buttonProps={{
-            css: { color: '$primary11', fontWeight: 500, px: '$4' },
-            color: 'ghost',
-            disabled: false,
-          }}
-          buttonCss={{ px: '$4' }}
-          mutate={mutate}
-        />
       )}
     </Flex>
   )

@@ -1,4 +1,9 @@
-import { GetServerSideProps, InferGetServerSidePropsType, NextPage } from 'next'
+import {
+  GetStaticPaths,
+  GetStaticProps,
+  InferGetStaticPropsType,
+  NextPage,
+} from 'next'
 import { Text, Flex, Box } from 'components/primitives'
 import Layout from 'components/Layout'
 import {
@@ -9,12 +14,12 @@ import {
   useState,
 } from 'react'
 import { useMediaQuery } from 'react-responsive'
-import { useMounted } from 'hooks'
+import { useMarketplaceChain, useMounted } from 'hooks'
 import { paths } from '@reservoir0x/reservoir-sdk'
 import { useCollections } from '@reservoir0x/reservoir-kit-ui'
 import fetcher from 'utils/fetcher'
-import { NORMALIZE_ROYALTIES } from '../../../_app'
-import supportedChains, { DefaultChain } from 'utils/chains'
+import { NORMALIZE_ROYALTIES } from '../../_app'
+import supportedChains, {DefaultChain} from 'utils/chains'
 import { CollectionRankingsTable } from 'components/rankings/CollectionRankingsTable'
 import { useIntersectionObserver } from 'usehooks-ts'
 import LoadingSpinner from 'components/common/LoadingSpinner'
@@ -26,7 +31,7 @@ import { Head } from 'components/Head'
 import { ChainContext } from 'context/ChainContextProvider'
 import { useRouter } from 'next/router'
 
-type Props = InferGetServerSidePropsType<typeof getServerSideProps>
+type Props = InferGetStaticPropsType<typeof getStaticProps>
 
 const IndexPage: NextPage<Props> = ({ ssr }) => {
   const router = useRouter()
@@ -35,6 +40,7 @@ const IndexPage: NextPage<Props> = ({ ssr }) => {
   const compactToggleNames = useMediaQuery({ query: '(max-width: 800px)' })
   const [sortByTime, setSortByTime] =
     useState<CollectionsSortingOption>('1DayVolume')
+  const marketplaceChain = useMarketplaceChain()
 
   let collectionQuery: Parameters<typeof useCollections>['0'] = {
     limit: 20,
@@ -63,10 +69,10 @@ const IndexPage: NextPage<Props> = ({ ssr }) => {
     collectionQuery.community = chain.community
   }
 
-  const { data, fetchNextPage, isFetchingPage, isValidating } = useCollections(
+  const { data, fetchNextPage, isFetchingPage, isValidating, isFetchingInitialData } = useCollections(
     collectionQuery,
     {
-      fallbackData: [ssr.collection],
+      fallbackData: [ssr.collections[marketplaceChain.id]],
     }
   )
 
@@ -106,22 +112,17 @@ const IndexPage: NextPage<Props> = ({ ssr }) => {
           p: 24,
           height: '100%',
           '@bp800': {
-            p: '$5',
-          },
-
-          '@xl': {
-            px: '$6',
+            p: '$6',
           },
         }}
       >
-        <Flex direction="column">
+        <Flex css={{ my: '$6', gap: 65 }} direction="column">
           <Flex
             justify="between"
             align="start"
             css={{
               flexDirection: 'column',
               gap: 24,
-              mb: '$4',
               '@bp800': {
                 alignItems: 'center',
                 flexDirection: 'row',
@@ -129,7 +130,7 @@ const IndexPage: NextPage<Props> = ({ ssr }) => {
             }}
           >
             <Text style="h4" as="h4">
-              Trending Collections
+              Collection Rankings
             </Text>
             <Flex align="center" css={{ gap: '$4' }}>
               <CollectionsTimeDropdown
@@ -142,7 +143,7 @@ const IndexPage: NextPage<Props> = ({ ssr }) => {
               <ChainToggle />
             </Flex>
           </Flex>
-          {isSSR || !isMounted ? null : (
+          {(isSSR || !isMounted || isFetchingInitialData) ? null : (
             <CollectionRankingsTable
               collections={collections}
               volumeKey={volumeKey}
@@ -154,7 +155,7 @@ const IndexPage: NextPage<Props> = ({ ssr }) => {
             css={{
               display: isFetchingPage ? 'none' : 'block',
             }}
-          ></Box>
+          />
         </Flex>
         {(isFetchingPage || isValidating) && (
           <Flex align="center" justify="center" css={{ py: '$4' }}>
@@ -166,23 +167,31 @@ const IndexPage: NextPage<Props> = ({ ssr }) => {
   )
 }
 
+export const getStaticPaths: GetStaticPaths = async () => {
+  return {
+    paths: [],
+    fallback: 'blocking',
+  }
+}
+
 type CollectionSchema =
   paths['/collections/v5']['get']['responses']['200']['schema']
+type ChainCollections = Record<string, CollectionSchema>
 
-export const getServerSideProps: GetServerSideProps<{
+export const getStaticProps: GetStaticProps<{
   ssr: {
-    collection: CollectionSchema
+    collections: ChainCollections
   }
-}> = async ({ res, params }) => {
+}> = async ({ params }) => {
   const collectionQuery: paths['/collections/v5']['get']['parameters']['query'] =
     {
       sortBy: '1DayVolume',
       normalizeRoyalties: NORMALIZE_ROYALTIES,
       limit: 20,
+      includeTopBid: true,
     }
-  const chainPrefix = params?.chain || ''
-  const chain =
-    supportedChains.find((chain) => chain.routePrefix === chainPrefix) ||
+
+  const chain = supportedChains.find((chain) => params?.chain === chain.routePrefix) ||
     DefaultChain
   const query = { ...collectionQuery }
   if (chain.collectionSetId) {
@@ -190,23 +199,28 @@ export const getServerSideProps: GetServerSideProps<{
   } else if (chain.community) {
     query.community = chain.community
   }
-  const response = await fetcher(
-    `${chain.reservoirBaseUrl}/collections/v7`,
-    query,
-    {
-      headers: {
-        'x-api-key': process.env.RESERVOIR_API_KEY || '',
-      },
-    }
-  )
+  const response = await fetcher(`${chain.reservoirBaseUrl}/collections/top-selling/v1`, query, {
+    headers: {
+      'x-api-key': chain.apiKey || '',
+    },
+  })
 
-  res.setHeader(
-    'Cache-Control',
-    'public, s-maxage=30, stale-while-revalidate=60'
-  )
+  const collections: ChainCollections = {}
+
+  supportedChains.forEach((c) => {
+    if (c.id === chain.id) {
+      collections[c.id] = response.data
+      return
+    }
+
+    collections[c.id] = {
+      collections: []
+    }
+  })
 
   return {
-    props: { ssr: { collection: response.data } },
+    props: { ssr: { collections } },
+    revalidate: 5,
   }
 }
 

@@ -33,7 +33,12 @@ import { TokenActivityTable } from 'components/token/ActivityTable'
 import { TokenInfo } from 'components/token/TokenInfo'
 import { ToastContext } from 'context/ToastContextProvider'
 import { useENSResolver, useMarketplaceChain, useMounted } from 'hooks'
-import { GetServerSideProps, InferGetServerSidePropsType, NextPage } from 'next'
+import {
+  GetStaticPaths,
+  GetStaticProps,
+  InferGetStaticPropsType,
+  NextPage,
+} from 'next'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { NORMALIZE_ROYALTIES } from 'pages/_app'
@@ -50,7 +55,7 @@ import { Head } from 'components/Head'
 import { OffersTable } from 'components/token/OffersTable'
 import { ListingsTable } from 'components/token/ListingsTable'
 
-type Props = InferGetServerSidePropsType<typeof getServerSideProps>
+type Props = InferGetStaticPropsType<typeof getStaticProps>
 
 type ActivityTypes = Exclude<
   NonNullable<
@@ -88,7 +93,7 @@ const IndexPage: NextPage<Props> = ({ assetId, ssr }) => {
       includeQuantity: true,
     },
     {
-      fallbackData: [ssr.tokens ? ssr.tokens : {}],
+      fallbackData: [ssr.tokens],
     }
   )
 
@@ -100,7 +105,7 @@ const IndexPage: NextPage<Props> = ({ assetId, ssr }) => {
       id: token?.token?.collection?.id,
     },
     {
-      fallbackData: [ssr.collection ? ssr.collection : {}],
+      fallbackData: [ssr.collection],
     }
   )
   const collection = collections && collections[0] ? collections[0] : null
@@ -109,7 +114,6 @@ const IndexPage: NextPage<Props> = ({ assetId, ssr }) => {
     is1155 ? account.address : undefined,
     {
       tokens: [`${contract}:${id}`],
-      limit: 20,
     }
   )
 
@@ -234,7 +238,7 @@ const IndexPage: NextPage<Props> = ({ assetId, ssr }) => {
       <Flex
         justify="center"
         css={{
-          maxWidth: 1320,
+          maxWidth: 1175,
           mt: 10,
           pb: 100,
           marginLeft: 'auto',
@@ -262,8 +266,6 @@ const IndexPage: NextPage<Props> = ({ assetId, ssr }) => {
             flex: 1,
             width: '100%',
             '@md': { maxWidth: 445 },
-            '@lg': { maxWidth: 520 },
-            '@xl': { maxWidth: 620 },
             position: 'relative',
             '@sm': {
               '>button': {
@@ -298,7 +300,6 @@ const IndexPage: NextPage<Props> = ({ assetId, ssr }) => {
             <TokenMedia
               token={token?.token}
               videoOptions={{ autoPlay: true, muted: true }}
-              imageResolution={'large'}
               style={{
                 width: '100%',
                 height: 'auto',
@@ -595,21 +596,24 @@ const IndexPage: NextPage<Props> = ({ assetId, ssr }) => {
   )
 }
 
-type SSRProps = {
-  collection?:
-    | paths['/collections/v7']['get']['responses']['200']['schema']
-    | null
-  tokens?: paths['/tokens/v6']['get']['responses']['200']['schema'] | null
+export const getStaticPaths: GetStaticPaths = async () => {
+  return {
+    paths: [],
+    fallback: 'blocking',
+  }
 }
 
-export const getServerSideProps: GetServerSideProps<{
+export const getStaticProps: GetStaticProps<{
   assetId?: string
-  ssr: SSRProps
-}> = async ({ params, res }) => {
+  ssr: {
+    collection: paths['/collections/v5']['get']['responses']['200']['schema']
+    tokens: paths['/tokens/v6']['get']['responses']['200']['schema']
+  }
+}> = async ({ params }) => {
   const assetId = params?.assetId ? params.assetId.toString().split(':') : []
   let collectionId = assetId[0]
   const id = assetId[1]
-  const { reservoirBaseUrl } =
+  const { reservoirBaseUrl, apiKey } =
     supportedChains.find((chain) => params?.chain === chain.routePrefix) ||
     DefaultChain
 
@@ -617,7 +621,7 @@ export const getServerSideProps: GetServerSideProps<{
 
   const headers = {
     headers: {
-      'x-api-key': process.env.RESERVOIR_API_KEY || '',
+      'x-api-key': apiKey || '',
     },
   }
 
@@ -629,49 +633,38 @@ export const getServerSideProps: GetServerSideProps<{
     includeDynamicPricing: true,
   }
 
-  let tokens: SSRProps['tokens'] = null
-  let collection: SSRProps['collection'] = null
+  const tokensPromise = fetcher(
+    `${reservoirBaseUrl}/tokens/v6`,
+    tokensQuery,
+    headers
+  )
 
-  try {
-    const tokensPromise = fetcher(
-      `${reservoirBaseUrl}/tokens/v6`,
-      tokensQuery,
-      headers
-    )
+  const tokensResponse = await tokensPromise
+  const tokens = tokensResponse.data
+    ? (tokensResponse.data as Props['ssr']['tokens'])
+    : {}
 
-    const tokensResponse = await tokensPromise
-    tokens = tokensResponse.data
-      ? (tokensResponse.data as Props['ssr']['tokens'])
-      : {}
+  let collectionQuery: paths['/collections/v5']['get']['parameters']['query'] =
+    {
+      id: tokens?.tokens?.[0]?.token?.collection?.id,
+      includeTopBid: true,
+      normalizeRoyalties: NORMALIZE_ROYALTIES,
+    }
 
-    let collectionQuery: paths['/collections/v7']['get']['parameters']['query'] =
-      {
-        id: tokens?.tokens?.[0]?.token?.collection?.id,
-        normalizeRoyalties: NORMALIZE_ROYALTIES,
-      }
+  const collectionsPromise = fetcher(
+    `${reservoirBaseUrl}/collections/v5`,
+    collectionQuery,
+    headers
+  )
 
-    const collectionsPromise = fetcher(
-      `${reservoirBaseUrl}/collections/v7`,
-      collectionQuery,
-      headers
-    )
-
-    const collectionsResponse = await collectionsPromise
-    collection = collectionsResponse.data
-      ? (collectionsResponse.data as Props['ssr']['collection'])
-      : {}
-
-    res.setHeader(
-      'Cache-Control',
-      'public, s-maxage=30, stale-while-revalidate=60'
-    )
-  } catch (e) {}
+  const collectionsResponse = await collectionsPromise
+  const collection = collectionsResponse.data
+    ? (collectionsResponse.data as Props['ssr']['collection'])
+    : {}
 
   return {
-    props: {
-      assetId: params?.assetId as string,
-      ssr: { collection, tokens },
-    },
+    props: { assetId: params?.assetId as string, ssr: { collection, tokens } },
+    revalidate: 20,
   }
 }
 
